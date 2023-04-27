@@ -7,11 +7,7 @@ provider:
   iamRoleStatements:
     - Effect: Allow
       Action:
-        - dynamodb:GetItem
-        - dynamodb:UpdateItem
         - dynamodb:PutItem
-        - dynamodb:ListStreams
-        - dynamodb:DescribeStream
       Resource: "arn:aws:dynamodb:us-east-1:*:table/Invoice"
 
 resources:
