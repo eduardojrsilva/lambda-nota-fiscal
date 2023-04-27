@@ -1,0 +1,50 @@
+service: lambda-nota-fiscal
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:UpdateItem
+        - dynamodb:PutItem
+        - dynamodb:ListStreams
+        - dynamodb:DescribeStream
+      Resource: "arn:aws:dynamodb:us-east-1:*:table/Invoice"
+
+resources:
+  Resources:
+    InvoiceTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Invoice
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+
+functions:
+  invoice-save:
+    handler: handler.invoiceSave
+    events:
+      - httpApi:
+          path: /
+          method: post
+  invoice-trigger:
+    handler: handler.invoiceTrigger
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt:
+              - InvoiceTable
+              - StreamArn

@@ -1,0 +1,14 @@
+{
+  "name": "lambda-nota-fiscal",
+  "version": "1.0.0",
+  "main": "handler.js",
+  "scripts": {
+    "invoke-local": "sls invoke local -f invoice-save --path request-mock/invoice.json"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1220.0",
+    "joi": "^17.9.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {}
+}
