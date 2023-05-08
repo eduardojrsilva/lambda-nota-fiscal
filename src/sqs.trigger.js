@@ -1,8 +1,9 @@
 class Handler {
-  constructor({ dynamoDbSvc, sqsSvc, s3Svc }){
+  constructor({ dynamoDbSvc, sqsSvc, s3Svc, snsSvc }){
     this.dynamoDbSvc = dynamoDbSvc;
     this.sqsSvc = sqsSvc;
     this.s3Svc = s3Svc;
+    this.snsSvc = snsSvc;
   }
 
   async getItem(params) {
@@ -106,6 +107,29 @@ class Handler {
     return url;
   }
 
+  async subscribeEmail() {
+    const params = {
+      Protocol: 'EMAIL',
+      TopicArn: process.env.SNS_TOPIC_ARN,
+      Endpoint: 'silva_eduardo@offerwise.com'
+    }
+
+    await this.snsSvc.subscribe(params).promise();
+  }
+
+  async sendEmailConfirmation(invoiceUrl) {
+    const params = {
+      Message: `
+        Sua compra foi finalizada com sucesso!
+
+        Segue o link da nota fiscal: ${invoiceUrl}
+      `,
+      TopicArn: process.env.SNS_TOPIC_ARN
+    };
+
+    await this.snsSvc.publish(params).promise();
+  }
+
   handlerError(data) {
     const response = {
       statusCode: data.statusCode || 501,
@@ -134,8 +158,11 @@ class Handler {
 
       await this.uploadFile(invoicePayload, id)
 
-      const publicUrl = await this.getPublicUrl(id);
-      console.log('publicUrl ====> ', publicUrl)
+      const invoicePublicUrl = await this.getPublicUrl(id);
+
+      // await this.subscribeEmail();
+
+      await this.sendEmailConfirmation(invoicePublicUrl);
     } catch (error) {
       console.log('Erro *** ', error.stack);
 
@@ -148,11 +175,13 @@ const AWS = require('aws-sdk');
 const dynamoDB = new AWS.DynamoDB({ params: { TableName: 'Invoice'}});
 const sqsQueue = new AWS.SQS();
 const s3 = new AWS.S3();
+const sns = new AWS.SNS();
 
 const handler = new Handler({
   dynamoDbSvc: dynamoDB,
   sqsSvc: sqsQueue,
-  s3Svc: s3
+  s3Svc: s3,
+  snsSvc: sns,
 });
 
 module.exports = handler.main.bind(handler)

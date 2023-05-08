@@ -6,6 +6,7 @@ provider:
   runtime: nodejs16.x
   environment:
     SQS_QUEUE_URL: { Ref: SQSQueue }
+    SNS_TOPIC_ARN: { Ref: EmailConfirmationTopic }
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -25,6 +26,12 @@ provider:
         - s3:ListBuckets
         - s3:ListObjects
       Resource: "arn:aws:s3:::ejrs-invoice-bucket/*"
+    - Effect: Allow
+      Action:
+        - sns:Subscribe
+        - sns:Publish
+      Resource:
+        Ref: EmailConfirmationTopic
 
 resources:
   Resources:
@@ -52,6 +59,10 @@ resources:
       Type: "AWS::S3::Bucket"
       Properties:
         BucketName: ejrs-invoice-bucket
+    EmailConfirmationTopic:
+      Type: "AWS::SNS::Topic"
+      Properties:
+        TopicName: email-confirmation-topic
 
 functions:
   invoice-save:
