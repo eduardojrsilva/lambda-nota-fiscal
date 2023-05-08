@@ -66,13 +66,13 @@ resources:
 
 functions:
   invoice-save:
-    handler: handler.invoiceSave
+    handler: src/handlers/index.invoiceSave
     events:
       - httpApi:
           path: /
           method: post
   sqs-trigger:
-    handler: handler.sqsTrigger
+    handler: src/handlers/index.sqsTrigger
     events:
       - sqs:
           arn:
