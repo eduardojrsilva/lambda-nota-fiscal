@@ -1,4 +1,4 @@
 module.exports = {
-  invoiceSave: require('./src/invoice.save'),
-  sqsTrigger: require('./src/sqs.trigger')
+  invoiceSave: require('./src/services/saveInvoice/invoice.save'),
+  sqsTrigger: require('./src/services/sendConfirmation/sqs.trigger')
 }
