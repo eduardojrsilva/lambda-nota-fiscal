@@ -78,7 +78,7 @@ class Handler {
       Bucket: 'ejrs-invoice-bucket',
       Key: id+'.txt',
       Body: payload,
-      ContentType: 'text/plain',
+      ContentType: 'text/plain; charset=utf-8',
     }
 
     return params;
