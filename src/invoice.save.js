@@ -4,8 +4,9 @@ const decoratorValidator = require('./util/decoratorValidator');
 const globalEnum = require('./util/globalEnum');
 
 class Handler {
-  constructor({ dynamoDbSvc }){
+  constructor({ dynamoDbSvc, sqsSvc }){
     this.dynamoDbSvc = dynamoDbSvc;
+    this.sqsSvc = sqsSvc;
   }
 
   static validator() {
@@ -44,7 +45,28 @@ class Handler {
     return params;
   }
 
+  getMessageParams(id) {
+    const params = {
+      MessageBody: `${id}`,
+      MessageDeduplicationId: "invoice",
+      MessageGroupId: "Group1",
+      QueueUrl: process.env.SQS_QUEUE_URL
+    };
+
+    return params
+  }
+
   handlerSuccess(data) {
+    const params = this.getMessageParams(data.id);
+
+    this.sqsSvc.sendMessage(params, function(err, data) {
+      if (err) {
+        console.log("Error", err);
+      } else {
+        console.log("Success", data.MessageId);
+      }
+    });
+
     const response = {
       statusCode: 200,
       body: JSON.stringify(data)
@@ -59,6 +81,8 @@ class Handler {
       headers: { 'Content-Type': 'text/plain' },
       body: 'Couldn\'t create item!'
     }
+
+    return response;
   }
 
   async main(event) {
@@ -77,10 +101,12 @@ class Handler {
   }
 }
 
-const AWS = require('aws-sdk')
-const dynamoDB = new AWS.DynamoDB.DocumentClient({ params: { TableName: 'Invoice'}})
+const AWS = require('aws-sdk');
+const dynamoDB = new AWS.DynamoDB.DocumentClient({ params: { TableName: 'Invoice'}});
+const sqsQueue = new AWS.SQS();
 const handler = new Handler({
-  dynamoDbSvc: dynamoDB
+  dynamoDbSvc: dynamoDB,
+  sqsSvc: sqsQueue
 });
 
 module.exports = decoratorValidator(

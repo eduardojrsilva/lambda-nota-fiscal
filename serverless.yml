@@ -4,11 +4,27 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs16.x
+  environment:
+    SQS_QUEUE_URL: { Ref: SQSQueue }
   iamRoleStatements:
     - Effect: Allow
       Action:
+        - dynamodb:GetItem
         - dynamodb:PutItem
       Resource: "arn:aws:dynamodb:us-east-1:*:table/Invoice"
+    - Effect: Allow
+      Action:
+        - sqs:*
+      Resource:
+        Fn::GetAtt: [ SQSQueue, Arn ]
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject  
+        - s3:PutObjectAcl
+        - s3:ListBuckets
+        - s3:ListObjects
+      Resource: "arn:aws:s3:::ejrs-invoice-bucket/*"
 
 resources:
   Resources:
@@ -27,6 +43,15 @@ resources:
           WriteCapacityUnits: 1
         StreamSpecification:
           StreamViewType: NEW_AND_OLD_IMAGES
+    SQSQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: sqs-queue.fifo
+        FifoQueue: true
+    InvoiceBucket:
+      Type: "AWS::S3::Bucket"
+      Properties:
+        BucketName: ejrs-invoice-bucket
 
 functions:
   invoice-save:
@@ -35,12 +60,11 @@ functions:
       - httpApi:
           path: /
           method: post
-  invoice-trigger:
-    handler: handler.invoiceTrigger
+  sqs-trigger:
+    handler: handler.sqsTrigger
     events:
-      - stream:
-          type: dynamodb
+      - sqs:
           arn:
             Fn::GetAtt:
-              - InvoiceTable
-              - StreamArn
+              - SQSQueue
+              - Arn
