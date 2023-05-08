@@ -1,7 +1,7 @@
 const uuid = require('uuid');
 const Joi = require('joi');
-const decoratorValidator = require('./util/decoratorValidator');
-const globalEnum = require('./util/globalEnum');
+const decoratorValidator = require('../../util/decoratorValidator');
+const globalEnum = require('../../util/globalEnum');
 
 class Handler {
   constructor({ dynamoDbSvc, sqsSvc }){
