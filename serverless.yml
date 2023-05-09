@@ -7,6 +7,7 @@ provider:
   environment:
     SQS_QUEUE_URL: { Ref: SQSQueue }
     SNS_TOPIC_ARN: { Ref: EmailConfirmationTopic }
+    S3_BUCKET_NAME: { Ref: InvoiceBucket }
   iamRoleStatements:
     - Effect: Allow
       Action:
