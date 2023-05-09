@@ -46,7 +46,9 @@ async function getInvoiceById(id) {
 
   const { Item } = await dynamoDB.getItem(params).promise();
 
-  return Item;
+  const invoice = AWS.DynamoDB.Converter.unmarshall(Item);
+
+  return invoice;
 }
 
 async function getInvoice() {
