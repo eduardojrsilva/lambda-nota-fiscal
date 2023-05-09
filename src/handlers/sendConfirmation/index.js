@@ -9,8 +9,8 @@ class Handler {
     const response = {
       statusCode: data.statusCode || 501,
       headers: { 'Content-Type': 'text/plain' },
-      body: 'Couldn\'t receive message!'
-    }
+      body: JSON.stringify({error: "Couldn't receive message!"})
+    };
 
     return response;
   }
