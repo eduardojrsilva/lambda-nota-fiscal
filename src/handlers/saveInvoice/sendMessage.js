@@ -4,8 +4,8 @@ const sqsQueue = new AWS.SQS();
 function sendMessage(id) {
   const params = {
     MessageBody: `${id}`,
-    MessageDeduplicationId: "invoice",
-    MessageGroupId: "Group1",
+    MessageDeduplicationId: `invoice-${id}`,
+    MessageGroupId: "Invoices",
     QueueUrl: process.env.SQS_QUEUE_URL
   };
 

@@ -20,12 +20,16 @@ function deleteMessage(receiptHandle) {
 async function getFirstMessage() {
   const params = {
     QueueUrl: process.env.SQS_QUEUE_URL,
-    MaxNumberOfMessages: 1,
-    VisibilityTimeout: 10,
-    WaitTimeSeconds: 0
+    MaxNumberOfMessages: 10,
+    WaitTimeSeconds: 20,
+    AttributeNames: ['All'],
+    MessageAttributeNames: ['All'],
+    ReceiveRequestAttemptId: `${Date.now()}-${Math.random()}`
   };
 
   const { Messages } = await sqsQueue.receiveMessage(params).promise();
+
+  if (!Messages) return;
 
   const [ firstMessage ] = Messages;
 
@@ -52,11 +56,11 @@ async function getInvoiceById(id) {
 }
 
 async function getInvoice() {
-  // const message = await getFirstMessage(); 
+  // const message = await getFirstMessage();
 
   // if (!message) return;
 
-  const id = "e198bb12-2e66-4106-84a6-77e1ce43e688";
+  const id = "677b98d7-7378-45ad-a237-fa1bb582ace5";
 
   const invoice = await getInvoiceById(id);
 
