@@ -1,11 +1,13 @@
 const Joi = require('joi');
 const decoratorValidator = require('../../util/decoratorValidator');
 const globalEnum = require('../../util/globalEnum');
-const persistItem = require('./persistItem');
-const sendMessage = require('./sendMessage');
+const uuid = require('uuid');
 
 class Handler {
-  constructor(){}
+  constructor({ dynamoDB, sqsQueue }){
+    this.dynamoDB = dynamoDB;
+    this.sqsQueue = sqsQueue;
+  }
 
   static validator() {
     return Joi.object({
@@ -23,6 +25,61 @@ class Handler {
         })
       ).required()
     });
+  }
+
+  formatItem(item) {
+    return {
+      id: item.id,
+      fullName: item.fullName,
+      email: item.email,
+      cpf: item.cpf,
+      items: item.items,
+      total: item.total,
+      createdAt: item.createdAt,
+    };
+  }
+  
+  getTotalPrice(items) {
+    const total = items.reduce((acc, { price, amount }) => (
+      acc + price * amount
+    ), 0);
+  
+    return total;
+  }
+  
+  async persistItem(data) {
+    const params = {
+      TableName: 'Invoice',
+      Item: {
+        id: uuid.v4(),
+        ...data,
+        total: this.getTotalPrice(data.items),
+        createdAt: new Date().toISOString(),
+      }
+    }
+    
+    await this.dynamoDB.put(params).promise();
+  
+    const savedItem = this.formatItem(params.Item);
+  
+    return savedItem;
+  }
+
+  async sendMessage(id) {
+    const params = {
+      MessageBody: `${id}`,
+      MessageDeduplicationId: `invoice-${id}`,
+      MessageGroupId: "Invoices",
+      QueueUrl: process.env.SQS_QUEUE_URL
+    };
+  
+    await this.sqsQueue.sendMessage(params, function(err, data) {
+      if (err) {
+        console.log("Error", err);
+      } else {
+        console.log("Success ", data.MessageId);
+      }
+    }).promise();
   }
 
   handlerSuccess(data) {
@@ -48,9 +105,9 @@ class Handler {
     try {
       const data = event.body;
 
-      const invoice = await persistItem(data);
+      const invoice = await this.persistItem(data);
 
-      sendMessage(invoice.id);
+      await this.sendMessage(invoice.id);
 
       return this.handlerSuccess(invoice);
     } catch (error) {
@@ -61,7 +118,11 @@ class Handler {
   }
 }
 
-const handler = new Handler();
+const AWS = require('aws-sdk');
+const dynamoDB = new AWS.DynamoDB.DocumentClient({ params: { TableName: 'Invoice'}});
+const sqsQueue = new AWS.SQS();
+
+const handler = new Handler({ dynamoDB, sqsQueue });
 
 module.exports = decoratorValidator(
   handler.main.bind(handler),
