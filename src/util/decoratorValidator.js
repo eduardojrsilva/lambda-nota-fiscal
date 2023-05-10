@@ -13,7 +13,7 @@ const decoratorValidator = (fn, schema, argsType) => {
 
     return {
       statusCode: 422, // unprocessable entity
-      body: error.message
+      body: JSON.stringify({ error: error.message })
     }
   }
 }
