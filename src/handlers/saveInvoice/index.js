@@ -1,6 +1,7 @@
 const Joi = require('joi');
 const decoratorValidator = require('../../util/decoratorValidator');
 const globalEnum = require('../../util/globalEnum');
+const processPayment = require('../../util/payment');
 const uuid = require('uuid');
 
 class Handler {
@@ -47,13 +48,14 @@ class Handler {
     return total;
   }
   
-  async persistItem(data) {
+  async persistItem(data, status) {
     const params = {
       TableName: 'Invoice',
       Item: {
         id: uuid.v4(),
         ...data,
         total: this.getTotalPrice(data.items),
+        status,
         createdAt: new Date().toISOString(),
       }
     }
@@ -65,9 +67,9 @@ class Handler {
     return savedItem;
   }
 
-  async sendMessage(id) {
+  async sendMessage(id, status) {
     const params = {
-      MessageBody: `${id}`,
+      MessageBody: `${id}#${status}`,
       MessageDeduplicationId: `invoice-${id}`,
       MessageGroupId: "Invoices",
       QueueUrl: process.env.SQS_QUEUE_URL
@@ -80,6 +82,15 @@ class Handler {
         console.log("Success ", data.MessageId);
       }
     }).promise();
+  }
+
+  handlePaymentError() {
+    const response = {
+      statusCode: 402, // Payment Required
+      body: JSON.stringify({ error: "Payment denied!"})
+    }
+
+    return response;
   }
 
   handlerSuccess(data) {
@@ -105,9 +116,13 @@ class Handler {
     try {
       const data = event.body;
 
-      const invoice = await this.persistItem(data);
+      const paymentStatus = processPayment();
 
-      await this.sendMessage(invoice.id);
+      if (paymentStatus === 'DENIED') return this.handlePaymentError();
+
+      const invoice = await this.persistItem(data, paymentStatus);
+
+      await this.sendMessage(invoice.id, paymentStatus);
 
       return this.handlerSuccess(invoice);
     } catch (error) {

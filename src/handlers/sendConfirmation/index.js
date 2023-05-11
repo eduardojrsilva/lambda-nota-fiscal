@@ -87,7 +87,7 @@ class Handler {
     await this.sns.subscribe(params).promise();
   }
   
-  async sendEmailConfirmation(invoiceUrl) {
+  async sendApprovedEmail(invoiceUrl) {
     const params = {
       Message: `
         Sua compra foi finalizada com sucesso!
@@ -100,9 +100,20 @@ class Handler {
     await this.sns.publish(params).promise();
   }
 
-  async main(event) {
-    const invoiceId = event.Records[0].body;
+  async sendPendingEmail() {
+    const params = {
+      Message: `
+        O pagamento da sua compra está pendente!
 
+        Iremos reprocessar para que sua compra seja efetuada. Por favor, aguarde.
+      `,
+      TopicArn: process.env.SNS_TOPIC_ARN
+    };
+  
+    await this.sns.publish(params).promise();
+  }
+
+  async handleAprroved(invoiceId) {
     const invoice = await this.getInvoiceById(invoiceId);
 
     const invoiceBody = this.createFileBody(invoice);
@@ -111,9 +122,27 @@ class Handler {
 
     const invoicePublicUrl = await this.getPublicUrl(invoice.id);
 
+    
+    await this.sendApprovedEmail(invoicePublicUrl);
+  }
+  
+  async handlePending() {
+    await this.sendPendingEmail();
+  }
+
+  handlerByStatus = {
+    'APPROVED': this.handleAprroved.bind(this),
+    'PENDING': this.handlePending.bind(this)
+  };
+  
+  async main(event) {
+    const [invoiceId, status] = event.Records[0].body.split('#');
+    
     // await this.subscribeEmail();
 
-    await this.sendEmailConfirmation(invoicePublicUrl);
+    const handler = this.handlerByStatus[status];
+
+    await handler(invoiceId);
   }
 }
 
