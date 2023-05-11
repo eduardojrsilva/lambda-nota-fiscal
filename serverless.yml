@@ -51,11 +51,20 @@ resources:
           WriteCapacityUnits: 1
         StreamSpecification:
           StreamViewType: NEW_AND_OLD_IMAGES
+    DeadLetterQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: dead-letter-queue.fifo
+        FifoQueue: true
     SQSQueue:
       Type: "AWS::SQS::Queue"
       Properties:
         QueueName: sqs-queue.fifo
         FifoQueue: true
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt: [ DeadLetterQueue, Arn ]
+          maxReceiveCount: 3
     InvoiceBucket:
       Type: "AWS::S3::Bucket"
       Properties:
