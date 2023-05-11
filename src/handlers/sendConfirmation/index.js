@@ -1,5 +1,6 @@
 const getCurrency = require('../../util/currency');
 const formatDate = require('../../util/date');
+const processPayment = require('../../util/payment');
 
 class Handler {
   constructor({ AWS, dynamoDB, s3, sns }){
@@ -113,7 +114,20 @@ class Handler {
     await this.sns.publish(params).promise();
   }
 
-  async handleAprroved(invoiceId) {
+  async sendDeniedEmail() {
+    const params = {
+      Message: `
+        O pagamento da sua compra foi negado!
+
+        Tente novamente mais tarde.
+      `,
+      TopicArn: process.env.SNS_TOPIC_ARN
+    };
+  
+    await this.sns.publish(params).promise();
+  }
+
+  async handleApproved(invoiceId) {
     const invoice = await this.getInvoiceById(invoiceId);
 
     const invoiceBody = this.createFileBody(invoice);
@@ -126,23 +140,44 @@ class Handler {
     await this.sendApprovedEmail(invoicePublicUrl);
   }
   
-  async handlePending() {
-    await this.sendPendingEmail();
+  async handlePending(invoiceId, currentAttempt) {
+    if (currentAttempt === 1)
+      await this.sendPendingEmail();
+
+    const status = processPayment();
+
+    const nextAttempt = currentAttempt + 1;
+
+    if (status === 'DENIED' || (status === 'PENDING' && nextAttempt >= this.maxReprocessAttempts))
+      return await this.sendDeniedEmail();
+
+    const params = {
+      MessageBody: `${invoiceId}#${status}#${nextAttempt}`,
+      MessageDeduplicationId: `invoice-${id}`,
+      MessageGroupId: "Invoices",
+      QueueUrl: process.env.SQS_QUEUE_URL
+    };
+  
+    await this.sqsQueue.sendMessage(params).promise();
   }
 
   handlerByStatus = {
-    'APPROVED': this.handleAprroved.bind(this),
-    'PENDING': this.handlePending.bind(this)
+    'APPROVED': this.handleApproved.bind(this),
+    'PENDING': this.handlePending.bind(this),
   };
+
+  maxReprocessAttempts = 5;
   
   async main(event) {
-    const [invoiceId, status] = event.Records[0].body.split('#');
+    const [invoiceId, status, attempt] = event.Records[0].body.split('#');
+
+    const currentAttempt = Number(attempt);
     
     // await this.subscribeEmail();
 
     const handler = this.handlerByStatus[status];
 
-    await handler(invoiceId);
+    await handler(invoiceId, currentAttempt);
   }
 }
 

@@ -69,19 +69,13 @@ class Handler {
 
   async sendMessage(id, status) {
     const params = {
-      MessageBody: `${id}#${status}`,
+      MessageBody: `${id}#${status}#1`,
       MessageDeduplicationId: `invoice-${id}`,
       MessageGroupId: "Invoices",
       QueueUrl: process.env.SQS_QUEUE_URL
     };
   
-    await this.sqsQueue.sendMessage(params, function(err, data) {
-      if (err) {
-        console.log("Error", err);
-      } else {
-        console.log("Success ", data.MessageId);
-      }
-    }).promise();
+    await this.sqsQueue.sendMessage(params).promise();
   }
 
   handlePaymentError() {
