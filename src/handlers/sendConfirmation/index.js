@@ -136,8 +136,11 @@ class Handler {
           S: invoiceId
         },
       },
-      UpdateExpression: "SET status = :newStatus",
-      ConditionExpression: "status <> :newStatus",
+      UpdateExpression: "SET #status = :newStatus",
+      ConditionExpression: "#status <> :newStatus",
+      ExpressionAttributeNames: {
+        "#status": "status"
+      },
       ExpressionAttributeValues: {
         ":newStatus": { "S": status }
       }
