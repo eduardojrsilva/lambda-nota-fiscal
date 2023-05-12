@@ -128,6 +128,24 @@ class Handler {
     await this.sns.publish(params).promise();
   }
 
+  async updateInvoiceStatus(invoiceId, status) {
+    const params = {
+      TableName: 'Invoice',
+      Key: {
+        id: {
+          S: invoiceId
+        },
+      },
+      UpdateExpression: "SET status = :newStatus",
+      ConditionExpression: "status <> :newStatus",
+      ExpressionAttributeValues: {
+        ":newStatus": { "S": status }
+      }
+    }
+  
+    await this.dynamoDB.updateItem(params).promise();
+  }
+
   async handleApproved(invoiceId) {
     const invoice = await this.getInvoiceById(invoiceId);
 
@@ -145,6 +163,8 @@ class Handler {
       await this.sendPendingEmail();
 
     const status = processPayment();
+
+    await this.updateInvoiceStatus(invoiceId, status);
 
     const nextAttempt = currentAttempt + 1;
 
