@@ -70,7 +70,7 @@ class Handler {
   async sendMessage(id, status) {
     const params = {
       MessageBody: `${id}#${status}#1`,
-      MessageDeduplicationId: `invoice-${id}`,
+      MessageDeduplicationId: `invoice-${id}-1`,
       MessageGroupId: "Invoices",
       QueueUrl: process.env.SQS_QUEUE_URL
     };

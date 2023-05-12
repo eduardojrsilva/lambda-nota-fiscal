@@ -3,11 +3,12 @@ const formatDate = require('../../util/date');
 const processPayment = require('../../util/payment');
 
 class Handler {
-  constructor({ AWS, dynamoDB, s3, sns }){
+  constructor({ AWS, dynamoDB, s3, sns, sqsQueue }){
     this.AWS = AWS;
     this.dynamoDB = dynamoDB;
     this.s3 = s3;
     this.sns = sns;
+    this.sqsQueue = sqsQueue;
   }
 
   async getInvoiceById(id) {
@@ -136,7 +137,6 @@ class Handler {
 
     const invoicePublicUrl = await this.getPublicUrl(invoice.id);
 
-    
     await this.sendApprovedEmail(invoicePublicUrl);
   }
   
@@ -153,7 +153,7 @@ class Handler {
 
     const params = {
       MessageBody: `${invoiceId}#${status}#${nextAttempt}`,
-      MessageDeduplicationId: `invoice-${id}`,
+      MessageDeduplicationId: `invoice-${invoiceId}-${nextAttempt}`,
       MessageGroupId: "Invoices",
       QueueUrl: process.env.SQS_QUEUE_URL
     };
@@ -185,7 +185,8 @@ const AWS = require('aws-sdk');
 const dynamoDB = new AWS.DynamoDB({ params: { TableName: 'Invoice'}});
 const s3 = new AWS.S3();
 const sns = new AWS.SNS();
+const sqsQueue = new AWS.SQS();
 
-const handler = new Handler({ AWS, dynamoDB, s3, sns });
+const handler = new Handler({ AWS, dynamoDB, s3, sns, sqsQueue });
 
 module.exports = handler.main.bind(handler)
