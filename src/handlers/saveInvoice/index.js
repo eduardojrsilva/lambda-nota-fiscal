@@ -36,6 +36,7 @@ class Handler {
       cpf: item.cpf,
       items: item.items,
       total: item.total,
+      status: item.status,
       createdAt: item.createdAt,
     };
   }
