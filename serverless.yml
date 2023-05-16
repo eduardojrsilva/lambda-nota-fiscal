@@ -15,11 +15,13 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
       Resource: "arn:aws:dynamodb:us-east-1:*:table/Invoice"
+
     - Effect: Allow
       Action:
         - sqs:*
       Resource:
         Fn::GetAtt: [ SQSQueue, Arn ]
+
     - Effect: Allow
       Action:
         - s3:GetObject
@@ -28,6 +30,7 @@ provider:
         - s3:ListBuckets
         - s3:ListObjects
       Resource: "arn:aws:s3:::ejrs-invoice-bucket/*"
+
     - Effect: Allow
       Action:
         - sns:Subscribe
@@ -52,25 +55,29 @@ resources:
           WriteCapacityUnits: 1
         StreamSpecification:
           StreamViewType: NEW_AND_OLD_IMAGES
+
     DeadLetterQueue:
       Type: "AWS::SQS::Queue"
       Properties:
         QueueName: dead-letter-queue.fifo
         FifoQueue: true
+
     SQSQueue:
       Type: "AWS::SQS::Queue"
       Properties:
         QueueName: sqs-queue.fifo
         FifoQueue: true
-        DelaySeconds: 30
+        DelaySeconds: 300
         RedrivePolicy:
           deadLetterTargetArn:
             Fn::GetAtt: [ DeadLetterQueue, Arn ]
           maxReceiveCount: 3
+
     InvoiceBucket:
       Type: "AWS::S3::Bucket"
       Properties:
         BucketName: ejrs-invoice-bucket
+
     EmailConfirmationTopic:
       Type: "AWS::SNS::Topic"
       Properties:
@@ -83,6 +90,7 @@ functions:
       - httpApi:
           path: /
           method: post
+          
   sqs-trigger:
     handler: src/handlers/index.sqsTrigger
     events:
