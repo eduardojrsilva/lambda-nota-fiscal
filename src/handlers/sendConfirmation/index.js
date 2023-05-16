@@ -79,11 +79,11 @@ class Handler {
     return url;
   }
 
-  async subscribeEmail() {
+  async subscribeEmail(email) {
     const params = {
       Protocol: 'EMAIL',
       TopicArn: process.env.SNS_TOPIC_ARN,
-      Endpoint: 'silva_eduardo@offerwise.com'
+      Endpoint: email
     }
   
     await this.sns.subscribe(params).promise();
@@ -196,7 +196,7 @@ class Handler {
 
     const currentAttempt = Number(attempt);
     
-    // await this.subscribeEmail();
+    // await this.subscribeEmail('example@email.com');
 
     const handler = this.handlerByStatus[status];
 
