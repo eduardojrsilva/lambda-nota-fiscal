@@ -37,7 +37,6 @@ class Handler {
       Email: ${invoice.email}
       CPF: ${invoice.cpf}
   
-      Nº cartão: ${invoice.cardNumber}
       Data do pagamento: ${formatDate(invoice.createdAt)}
   
       Itens:
