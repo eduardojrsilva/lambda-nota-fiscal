@@ -99,3 +99,4 @@ functions:
             Fn::GetAtt:
               - SQSQueue
               - Arn
+          batchSize: 1
