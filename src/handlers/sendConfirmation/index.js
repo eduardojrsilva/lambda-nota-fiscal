@@ -1,6 +1,7 @@
 const getCurrency = require('../../util/currency');
 const formatDate = require('../../util/date');
 const processPayment = require('../../util/payment');
+const uuid = require('uuid');
 
 class Handler {
   constructor({ AWS, dynamoDB, s3, sns, sqsQueue }){
@@ -107,7 +108,7 @@ class Handler {
       Message: `
         O pagamento da sua compra está pendente!
 
-        Iremos reprocessar para que sua compra seja efetuada. Por favor, aguarde.
+        Estamos processando para que sua compra seja efetuada. Por favor, aguarde.
       `,
       TopicArn: process.env.SNS_TOPIC_ARN
     };
@@ -161,13 +162,13 @@ class Handler {
     await this.sendApprovedEmail(invoicePublicUrl);
   }
   
-  async handlePending(invoiceId, currentAttempt) {
+  async handlePending(id, currentAttempt) {
     if (currentAttempt === 1)
       await this.sendPendingEmail();
 
     const status = processPayment();
 
-    await this.updateInvoiceStatus(invoiceId, status);
+    await this.updateInvoiceStatus(id, status);
 
     const nextAttempt = currentAttempt + 1;
 
@@ -175,9 +176,9 @@ class Handler {
       return await this.sendDeniedEmail();
 
     const params = {
-      MessageBody: `${invoiceId}#${status}#${nextAttempt}`,
-      MessageDeduplicationId: `invoice-${invoiceId}-${nextAttempt}`,
-      MessageGroupId: "Invoices",
+      MessageBody: JSON.stringify({ id, status, attempt: nextAttempt }),
+      MessageDeduplicationId: uuid.v4(),
+      MessageGroupId: `invoices-${status}`,
       QueueUrl: process.env.SQS_QUEUE_URL
     };
   
@@ -192,15 +193,13 @@ class Handler {
   maxReprocessAttempts = 5;
   
   async main(event) {
-    const [invoiceId, status, attempt] = event.Records[0].body.split('#');
-
-    const currentAttempt = Number(attempt);
+    const { id: invoiceId, status, attempt } = JSON.parse(event.Records[0].body);
     
     // await this.subscribeEmail('example@email.com');
 
     const handler = this.handlerByStatus[status];
 
-    await handler(invoiceId, currentAttempt);
+    await handler(invoiceId, attempt);
   }
 }
 
